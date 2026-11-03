@@ -1,0 +1,29 @@
+
+# name
+name: CI
+
+# action
+
+on: push
+
+
+
+# job
+jobs:
+  hello:
+    runs-on: ubuntu-latest  #create a VM with ubuntu-latest
+    steps:
+      - run: echo "أهلاً من GitHub Actions"
+
+
+
+
+
+
+
+
+
+
+
+
+
