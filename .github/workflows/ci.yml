@@ -4,9 +4,11 @@ name: CI
 
 # action
 
-on: push
-
-
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 # job
 jobs:
