@@ -13,10 +13,24 @@ jobs:
   hello:
     runs-on: ubuntu-latest  #create a VM with ubuntu-latest
     steps:
-      - run: echo "أهلاً من GitHub Actions"
+        # 1. ينزل الكود بتاعك على الجهاز الافتراضي
+      - uses: actions/checkout@v4
+
+      # 2. يسطب Node.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
 
+  # 3. يسطب الـ packages من package-lock.json
+      - run: npm ci
 
+      # 4. يفحص الكود بالـ linter
+      - run: npm run lint
+
+      # 5. يعمل build للمشروع
+      - run: npm run build
 
 
 
