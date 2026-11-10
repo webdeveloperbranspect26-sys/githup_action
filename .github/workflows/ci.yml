@@ -41,9 +41,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # جديد: فحص أنواع TypeScript بسرعة قبل الـ build
+      # جديد: يولّد أنواع Next (LayoutProps/PageProps) الأول، وبعدين يفحص TypeScript
       - name: Type check
-        run: npx tsc --noEmit
+        run: npx next typegen && npx tsc --noEmit
 
       # جديد: يشغل التستات لو موجودة، ولو مش موجودة يكمل عادي
       - name: Test
