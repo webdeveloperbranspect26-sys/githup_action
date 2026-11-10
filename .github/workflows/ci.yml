@@ -1,45 +1,91 @@
+# اسم الـ workflow اللي هيظهر في تاب Actions
+name: CI/CD
 
-# name
-name: CI
-
-# action
-
+# امتى الـ workflow يشتغل
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:   # جديد: زرار تشغيل يدوي من تاب Actions
 
-# job
+# جديد: لو عملت push مرتين ورا بعض في PR، يلغي القديم ويشغل الجديد بس
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# جديد: أقل صلاحيات ممكنة (أمان)
+permissions:
+  contents: read
+
 jobs:
-  hello:
-    runs-on: ubuntu-latest  #create a VM with ubuntu-latest
-    steps:
-        # 1. ينزل الكود بتاعك على الجهاز الافتراضي
-      - uses: actions/checkout@v4
+  # ============ الجزء الأول: CI (فحص + build) ============
+  build:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10   # جديد: لو علّق أكتر من 10 دقايق يقف
 
-      # 2. يسطب Node.js
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22   # تعديل: Node 20 خلص دعمه، 22 هو LTS
           cache: npm
 
+      - name: Install dependencies
+        run: npm ci
 
-  # 3. يسطب الـ packages من package-lock.json
-      - run: npm ci
+      - name: Lint
+        run: npm run lint
 
-      # 4. يفحص الكود بالـ linter
-      - run: npm run lint
+      # جديد: فحص أنواع TypeScript بسرعة قبل الـ build
+      - name: Type check
+        run: npx tsc --noEmit
 
-      # 5. يعمل build للمشروع
-      - run: npm run build
+      # جديد: يشغل التستات لو موجودة، ولو مش موجودة يكمل عادي
+      - name: Test
+        run: npm run test --if-present
 
+      # جديد: cache لـ .next/cache عشان الـ build التاني يبقى أسرع
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '!node_modules/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
+      - name: Build
+        run: npm run build
 
+      # يحفظ ناتج الـ build عشان الـ job اللي بعده يستخدمه
+      # تصحيح: next.config.ts فيه output: "export" فالناتج بيروح فولدر out مش dist
+      - name: Upload build output
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
 
+  # ============ الجزء التاني: CD (نشر على GitHub Pages) ============
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build   # مش هيشتغل غير لو build نجح
+    # ينشر بس لما يكون push على main، مش في الـ pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
 
+    permissions:
+      pages: write
+      id-token: write
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
-
-
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
 
